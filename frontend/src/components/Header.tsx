@@ -1,6 +1,6 @@
 import React from 'react';
 import { ControlMode, ConnectionStatus } from '../types/robot';
-import { Folder, ChevronDown, Check } from 'lucide-react';
+import { Folder, ChevronDown, RobotArm } from 'lucide-react';
 
 interface HeaderProps {
   mode: ControlMode;
@@ -52,12 +52,15 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-5">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center shadow-md shadow-emerald-500/20 text-white">
-            <Check className="w-4 h-4 stroke-[3]" />
+          <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center shadow-sm text-white">
+            <RobotArm className="w-5 h-5 stroke-[1.75]" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="font-semibold text-slate-900 text-[15px]">HiBot</span>
-            <span className="text-[10px] text-slate-400 font-medium">Robot HiBot · Visual Live</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-900 text-[15px] tracking-tight">HiBot Control Desk</span>
+              <RobotArm className="w-4 h-4 text-slate-600 stroke-[1.8]" />
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium">Robot Digital Twin · Visual Live</span>
           </div>
         </div>
 
