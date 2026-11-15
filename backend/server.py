@@ -28,8 +28,8 @@ import math
 import pathlib
 import time
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -117,6 +117,15 @@ async def index():
     if (DIST_DIR / "index.html").exists():
         return FileResponse(DIST_DIR / "index.html")
     return FileResponse(UI_FILE)
+
+
+@app.get("/favicon.svg")
+@app.get("/favicon.ico")
+async def favicon():
+    fav = DIST_DIR / "favicon.svg"
+    if fav.exists():
+        return FileResponse(fav, media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Favicon not found")
 
 
 def resolve_mesh_file(mesh_uri: str, urdf_path: str = None, urdf_dir: str = None) -> str:
