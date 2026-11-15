@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="./urdf-kit.js"></script>
+<style>
+  html,body{margin:0;height:100%;background:#dfe4e1;font-family:'Inter','Helvetica Neue',Helvetica,Arial,sans-serif;color:#272727;-webkit-font-smoothing:antialiased;overflow:hidden}
+  @keyframes vdpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes vdring{0%{box-shadow:inset 0 0 0 0 rgba(190,18,60,.0)}50%{box-shadow:inset 0 0 0 4px rgba(190,18,60,.55)}100%{box-shadow:inset 0 0 0 0 rgba(190,18,60,0)}}
+  canvas.vd-3d{display:block;width:100%;height:100%;touch-action:none}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(120% 120% at 50% 0%,#e7ebe8,#d3d9d5);">
+<div ref="{{ setStage }}" data-screen-label="Control Desk" style="--acc: {{ accent }};width:1920px;height:1080px;transform-origin:center center;display:flex;flex-direction:column;background:linear-gradient(rgba(205,255,229,0.05),rgba(255,255,255,0.0123) 39%,rgba(255,255,255,0.05)),linear-gradient(#ced6d2,#eaedeb 12%,#fff 30%,#fff);box-shadow:0 30px 90px -30px rgba(20,40,30,.45);">
+
+  <!-- ============ HEADER ============ -->
+  <header style="height:66px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:rgba(255,255,255,0.74);backdrop-filter:blur(10px);box-shadow:0 1px 0 #e9e9e9;z-index:5;">
+    <div style="display:flex;align-items:center;gap:20px;">
+      <div style="display:flex;align-items:center;gap:11px;">
+        <div style="width:32px;height:32px;border-radius:999px;background:var(--acc,#28ab67);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(40,171,103,.14);">
+          <svg width="17" height="17" viewBox="0 0 32 32" fill="none"><path d="M11 16l3.5 3.5L22 12" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="display:flex;flex-direction:column;line-height:1;">
+          <span style="font:500 16px Inter;color:#222;">HiBot</span>
+          <span style="font:400 11px Inter;color:#7a7a7a;margin-top:3px;">Robot HiBot · Visual Live</span>
+        </div>
+      </div>
+      <div style="width:1px;height:30px;background:#e9e9e9;"></div>
+      <div style="display:flex;gap:3px;background:#eff2f0;border-radius:999px;padding:3px;box-shadow:inset 0 0 6px rgba(0,0,0,0.06);">
+        <button onClick="{{ onMonitor }}" style="font:500 13px Inter;border:none;cursor:pointer;padding:8px 18px;border-radius:999px;background: {{ tabMonBg }};color: {{ tabMonFg }};">Giám sát</button>
+        <button onClick="{{ onJog }}" style="font:500 13px Inter;border:none;cursor:pointer;padding:8px 18px;border-radius:999px;background: {{ tabJogBg }};color: {{ tabJogFg }};">Jog</button>
+        <button onClick="{{ onTrajTab }}" style="font:500 13px Inter;border:none;cursor:pointer;padding:8px 18px;border-radius:999px;background: {{ tabTrajBg }};color: {{ tabTrajFg }};">Quỹ đạo</button>
+      </div>
+      <div style="width:1px;height:30px;background:#e9e9e9;"></div>
+      <button onClick="{{ onOpenProj }}" style="display:flex;align-items:center;gap:9px;border:1px solid #e2e6e4;background:#fff;border-radius:10px;height:40px;padding:0 13px;cursor:pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acc,#28ab67)" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+        <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1;">
+          <span style="font:500 13px Inter;color:#272727;">{{ modelName }}</span>
+          <span style="font:400 10px Inter;color:#7a7a7a;margin-top:3px;">{{ modelDof }} bậc · Mở dự án</span>
+        </span>
+      </button>
+      <input ref="{{ setFileInput }}" type="file" onChange="{{ onFolderInput }}" style="display:none;">
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <button onClick="{{ onOpenConn }}" style="display:flex;align-items:center;gap:8px;background: {{ connBg }};border:none;border-radius:999px;padding:8px 14px;cursor:pointer;">
+        <span style="width:8px;height:8px;border-radius:999px;background: {{ connDot }};box-shadow:0 0 0 3px {{ connHalo }};"></span>
+        <span style="font:500 13px Inter;color: {{ connFg }};">{{ connText }}</span>
+        <span style="font:400 12px Inter;color:#7a7a7a;">{{ connDetail }}</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a6a6a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px;"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <div style="width:1px;height:30px;background:#e9e9e9;"></div>
+      <div style="display:flex;align-items:center;gap:9px;">
+        <button onClick="{{ onEnable }}" style="font:500 13px Inter;cursor:pointer;border:1px solid {{ enableBorder }};border-radius:10px;height:40px;padding:0 16px;background: {{ enableBg }};color: {{ enableFg }};display:flex;align-items:center;gap:7px;">
+          <span style="width:7px;height:7px;border-radius:999px;background: {{ enableDot }};"></span>{{ enableLabel }}
+        </button>
+        <button onClick="{{ onHome }}" style="font:500 13px Inter;color:#272727;background:#fff;border:1px solid #e2e6e4;border-radius:10px;height:40px;padding:0 16px;cursor:pointer;opacity: {{ homeOpacity }};">Về Home</button>
+        <button onClick="{{ onEstop }}" style="font:600 13px Inter;letter-spacing:0.04em;color:#fff;background: {{ estopBg }};border:none;border-radius:10px;height:40px;padding:0 18px;cursor:pointer;box-shadow:0 0 0 3px {{ estopHalo }};">{{ estopLabel }}</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ 3-COLUMN BODY ============ -->
+  <div style="flex:1;display:flex;gap:16px;padding:16px;min-height:0;">
+
+    <!-- LEFT : JOG -->
+    <div style="width:430px;flex:none;background:#fff;border-radius:12px;box-shadow:0 0 15px 0 rgba(1,34,18,0.12);padding:18px;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font:500 17px Inter;color:#272727;">Điều khiển trục</span>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="font:400 11px Inter;color:#a6a6a6;">Bước</span>
+          <div style="display:flex;gap:2px;background:#eff2f0;border-radius:999px;padding:3px;">
+            <button onClick="{{ onStep1 }}" style="font:500 11px Inter;border:none;cursor:pointer;padding:4px 10px;border-radius:999px;background: {{ step1Bg }};color: {{ step1Fg }};">1°</button>
+            <button onClick="{{ onStep5 }}" style="font:500 11px Inter;border:none;cursor:pointer;padding:4px 10px;border-radius:999px;background: {{ step5Bg }};color: {{ step5Fg }};">5°</button>
+            <button onClick="{{ onStep15 }}" style="font:500 11px Inter;border:none;cursor:pointer;padding:4px 10px;border-radius:999px;background: {{ step15Bg }};color: {{ step15Fg }};">15°</button>
+          </div>
+        </div>
+      </div>
+      <div style="font:400 12px Inter;color:#7a7a7a;margin-bottom:8px;">Kéo thanh hoặc dùng −/+ · giữ trong giới hạn mềm</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;overflow:auto;">
+        <sc-for list="{{ jointRows }}" as="j" hint-placeholder-count="6">
+          <div style="padding:9px 10px;border-radius:10px;background: {{ j.rowBg }};">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+              <span style="font:500 14px Inter;color:#272727;">{{ j.name }}<span style="color:#a6a6a6;font-weight:400;font-size:11px;"> · {{ j.range }}</span></span>
+              <span style="font:500 16px Inter;color:#272727;font-variant-numeric:tabular-nums;">{{ j.ang }}°</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <button onClick="{{ j.onMinus }}" style="width:26px;height:26px;flex:none;border:none;border-radius:7px;background:#eff2f0;font:500 16px Inter;color:#272727;cursor:pointer;line-height:1;">−</button>
+              <div onPointerDown="{{ j.onDown }}" style="flex:1;height:18px;display:flex;align-items:center;cursor:pointer;">
+                <div style="position:relative;width:100%;height:8px;border-radius:999px;background:#eff2f0;">
+                  <div style="position:absolute;left:0;top:0;bottom:0;width: {{ j.posPct }};background: {{ j.barColor }};border-radius:999px;"></div>
+                  <div style="position:absolute;top:50%;left: {{ j.posPct }};transform:translate(-50%,-50%);width:17px;height:17px;border-radius:999px;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,0.25);border:2px solid {{ j.barColor }};"></div>
+                </div>
+              </div>
+              <button onClick="{{ j.onPlus }}" style="width:26px;height:26px;flex:none;border:none;border-radius:7px;background:var(--acc,#28ab67);font:500 16px Inter;color:#fff;cursor:pointer;line-height:1;">+</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:7px;">
+              <span style="font:400 11px Inter;color:#7a7a7a;">Mô‑men · dòng điện</span>
+              <span style="font:500 11px Inter;color: {{ j.tqColor }};font-variant-numeric:tabular-nums;">{{ j.tq }} Nm · {{ j.cur }} A</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid #f1f3f2;">
+        <span style="font:400 12px Inter;color:#7a7a7a;flex:none;">Tốc độ</span>
+        <div onPointerDown="{{ onSpeed }}" style="flex:1;height:18px;display:flex;align-items:center;cursor:pointer;">
+          <div style="position:relative;width:100%;height:6px;border-radius:999px;background:#eff2f0;">
+            <div style="position:absolute;left:0;top:0;bottom:0;width: {{ speedPct }};background:var(--acc,#28ab67);border-radius:999px;"></div>
+            <div style="position:absolute;top:50%;left: {{ speedPct }};transform:translate(-50%,-50%);width:14px;height:14px;border-radius:999px;background:#fff;border:2px solid var(--acc,#28ab67);box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+          </div>
+        </div>
+        <span style="font:500 12px Inter;color:#272727;width:40px;text-align:right;font-variant-numeric:tabular-nums;">{{ speedPct }}</span>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div style="flex:1;display:flex;flex-direction:column;gap:16px;min-height:0;">
+      <!-- TCP STRIP -->
+      <div style="flex:none;background:#fff;border-radius:12px;box-shadow:0 0 15px 0 rgba(1,34,18,0.12);padding:13px 18px;display:flex;align-items:center;">
+        <span style="font:500 11px Inter;letter-spacing:0.06em;text-transform:uppercase;color:#7a7a7a;flex:none;margin-right:8px;">Đầu công cụ (TCP)</span>
+        <div style="flex:1;display:flex;align-items:center;justify-content:space-around;">
+          <div style="text-align:center;"><div style="font:500 10px Inter;color:#a6a6a6;">X mm</div><div style="font:500 19px Inter;color:#272727;font-variant-numeric:tabular-nums;">{{ tcp.x }}</div></div>
+          <div style="text-align:center;"><div style="font:500 10px Inter;color:#a6a6a6;">Y mm</div><div style="font:500 19px Inter;color:#272727;font-variant-numeric:tabular-nums;">{{ tcp.y }}</div></div>
+          <div style="text-align:center;"><div style="font:500 10px Inter;color:#a6a6a6;">Z mm</div><div style="font:500 19px Inter;color:#272727;font-variant-numeric:tabular-nums;">{{ tcp.z }}</div></div>
+          <div style="width:1px;height:32px;background:#e9e9e9;"></div>
+          <div style="text-align:center;"><div style="font:500 10px Inter;color:#a6a6a6;">Rx °</div><div style="font:500 19px Inter;color:#272727;font-variant-numeric:tabular-nums;">{{ tcp.rx }}</div></div>
+          <div style="text-align:center;"><div style="font:500 10px Inter;color:#a6a6a6;">Ry °</div><div style="font:500 19px Inter;color:#272727;font-variant-numeric:tabular-nums;">{{ tcp.ry }}</div></div>
+          <div style="text-align:center;"><div style="font:500 10px Inter;color:#a6a6a6;">Rz °</div><div style="font:500 19px Inter;color:#272727;font-variant-numeric:tabular-nums;">{{ tcp.rz }}</div></div>
+        </div>
+      </div>
+      <!-- VIEWPORT -->
+      <div style="flex:1;position:relative;border-radius:12px;overflow:hidden;background:radial-gradient(125% 120% at 50% 0%, #ffffff 0%, #eef3f0 52%, #dfe7e2 100%);box-shadow:inset 0 0 0 1px #e7eae8;min-height:0;">
+        <canvas class="vd-3d" ref="{{ setCanvas }}"></canvas>
+        <div style="position:absolute;inset:0;pointer-events:none;border-radius:12px;animation: {{ estopAnim }};"></div>
+        <div style="position:absolute;top:14px;left:14px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.84);backdrop-filter:blur(8px);border-radius:999px;padding:7px 13px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
+          <span style="width:8px;height:8px;border-radius:999px;background: {{ liveDot }};animation: {{ liveAnim }};"></span>
+          <span style="font:500 12px Inter;letter-spacing:0.04em;color:#272727;">{{ liveLabel }}</span>
+        </div>
+        <div style="position:absolute;top:14px;right:14px;font:400 11px Inter;color:#7a7a7a;background:rgba(255,255,255,0.72);border-radius:999px;padding:6px 12px;">{{ clock }} · 200 Hz</div>
+        <div style="position:absolute;bottom:14px;left:14px;font:400 11px ui-monospace,Menlo,monospace;color:#8a948f;">hibot_arm_6dof.urdf · base_link → tool0 · 6 joint</div>
+        <div style="position:absolute;bottom:13px;right:14px;display:flex;gap:6px;">
+          <button onClick="{{ onResetView }}" style="font:500 11px Inter;cursor:pointer;border:none;border-radius:8px;padding:6px 11px;background:rgba(255,255,255,0.85);color:#272727;box-shadow:0 1px 4px rgba(0,0,0,0.06);">Đặt lại góc nhìn</button>
+          <button onClick="{{ onToggleGrid }}" style="font:500 11px Inter;cursor:pointer;border:none;border-radius:8px;padding:6px 11px;background: {{ gridBtnBg }};color: {{ gridBtnFg }};box-shadow:0 1px 4px rgba(0,0,0,0.06);">Khung lưới</button>
+          <span style="font:500 11px Inter;color:#fff;background:var(--acc,#28ab67);border-radius:8px;padding:6px 11px;">Trục TCP</span>
+        </div>
+        <div style="position:absolute;bottom:46px;left:14px;font:400 10.5px Inter;color:#9aa4a0;">Cuộn: phóng to/thu nhỏ · Kéo trái: xoay · Nút giữa (hoặc phải/Shift): di chuyển</div>
+      </div>
+      <!-- TRAJECTORY -->
+      <div style="flex:none;background:#fff;border-radius:12px;box-shadow:0 0 15px 0 rgba(1,34,18,0.12);padding:14px 18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div><span style="font:500 15px Inter;color:#272727;">Quỹ đạo</span> <span style="font:400 13px Inter;color:#7a7a7a;">pick_place_01 · {{ progLabel }} · {{ trajState }}</span></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button onClick="{{ onTrajReset }}" style="width:32px;height:32px;border:1px solid #e2e6e4;border-radius:999px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M7 2.5V0L3.5 3 7 6V3.6a3.4 3.4 0 1 1-3.4 3.4H2.4A4.6 4.6 0 1 0 7 2.5z" fill="#272727"></path></svg></button>
+            <button onClick="{{ onTrajPlay }}" style="width:34px;height:34px;border:none;border-radius:999px;background:var(--acc,#28ab67);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" viewBox="0 0 14 14" style="display: {{ playDisp }};"><path d="M3 2l9 5-9 5z" fill="#fff"></path></svg>
+              <svg width="13" height="13" viewBox="0 0 14 14" style="display: {{ pauseDisp }};"><rect x="2.5" y="2" width="3" height="10" rx="1" fill="#fff"></rect><rect x="8.5" y="2" width="3" height="10" rx="1" fill="#fff"></rect></svg>
+            </button>
+          </div>
+        </div>
+        <div onPointerDown="{{ onTrajScrub }}" style="position:relative;height:18px;display:flex;align-items:center;margin:14px 6px 24px;cursor:pointer;">
+          <div style="position:relative;width:100%;height:8px;border-radius:999px;background:#eff2f0;">
+            <div style="position:absolute;left:0;top:0;bottom:0;width: {{ progPct }};background:var(--acc,#28ab67);border-radius:999px;"></div>
+            <sc-for list="{{ waypoints }}" as="w" hint-placeholder-count="6">
+              <div style="position:absolute;top:50%;left: {{ w.pos }};transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;">
+                <span style="width:12px;height:12px;border-radius:999px;background: {{ w.fill }};border:2px solid var(--acc,#28ab67);box-shadow:0 1px 3px rgba(0,0,0,0.15);"></span>
+                <span style="font:500 10px Inter;color:#7a7a7a;margin-top:9px;white-space:nowrap;">{{ w.name }}</span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;top:50%;left: {{ progPct }};transform:translate(-50%,-50%);width:18px;height:18px;border-radius:999px;background:var(--acc,#28ab67);border:3px solid #fff;box-shadow:0 2px 6px rgba(40,171,103,0.4);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div style="width:448px;flex:none;display:flex;flex-direction:column;gap:16px;min-height:0;">
+      <!-- CONNECTION -->
+      <div style="flex:none;background:#fff;border-radius:12px;box-shadow:0 0 15px 0 rgba(1,34,18,0.12);padding:16px;">
+        <div style="font:500 15px Inter;color:#272727;margin-bottom:12px;">Kết nối &amp; hệ thống</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;"><span style="font:400 13px Inter;color:#7a7a7a;">Controller</span><span style="font:500 13px Inter;color:#272727;">VD‑CTRL‑6</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="font:400 13px Inter;color:#7a7a7a;">Địa chỉ IP</span><span style="font:500 13px Inter;color:#272727;font-variant-numeric:tabular-nums;">192.168.1.20</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="font:400 13px Inter;color:#7a7a7a;">Mô hình URDF</span><span style="font:500 13px Inter;color:#272727;">hibot_arm_6dof</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="font:400 13px Inter;color:#7a7a7a;">Servo</span><span style="display:inline-flex;align-items:center;gap:6px;font:500 13px Inter;color: {{ servoFg }};"><span style="width:7px;height:7px;border-radius:999px;background: {{ servoDot }};"></span>{{ servoText }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="font:400 13px Inter;color:#7a7a7a;">Nền tảng</span><span style="font:500 13px Inter;color:#272727;">Windows · Ubuntu</span></div>
+        </div>
+      </div>
+      <!-- ALARMS -->
+      <div style="flex:1;min-height:0;background:#fff;border-radius:12px;box-shadow:0 0 15px 0 rgba(1,34,18,0.12);padding:16px;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font:500 15px Inter;color:#272727;">Chẩn đoán &amp; cảnh báo</span>
+          <span style="font:500 11px Inter;color:#fff;background: {{ alarmBadgeBg }};border-radius:999px;padding:3px 10px;">{{ alarmBadge }}</span>
+        </div>
+        <div style="flex:1;overflow:hidden;">
+          <sc-for list="{{ alarms }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid #f1f3f2;">
+              <span style="margin-top:5px;width:8px;height:8px;flex:none;border-radius:999px;background: {{ a.color }};"></span>
+              <div style="flex:1;min-width:0;"><div style="font:500 13px Inter;color:#272727;">{{ a.title }}</div><div style="font:400 12px Inter;color:#7a7a7a;margin-top:2px;">{{ a.sub }}</div></div>
+              <span style="font:400 11px Inter;color:#a6a6a6;font-variant-numeric:tabular-nums;flex:none;">{{ a.time }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <!-- LOG -->
+      <div style="flex:none;height:218px;background:#fff;border-radius:12px;box-shadow:0 0 15px 0 rgba(1,34,18,0.12);padding:16px;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span style="font:500 15px Inter;color:#272727;">Nhật ký sự kiện</span>
+          <span style="font:400 11px Inter;color:#7a7a7a;">mới nhất ở trên</span>
+        </div>
+        <div style="flex:1;background:#f6f8f7;border-radius:10px;padding:10px 12px;overflow:hidden;">
+          <sc-for list="{{ logs }}" as="l" hint-placeholder-count="7">
+            <div style="display:flex;gap:9px;padding:2px 0;font:400 11px ui-monospace,Menlo,monospace;line-height:1.55;">
+              <span style="color:#a6a6a6;flex:none;">{{ l.t }}</span><span style="color: {{ l.c }};">{{ l.m }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ MODAL : MỞ DỰ ÁN URDF ============ -->
+  <div style="position:absolute;inset:0;z-index:30;display: {{ projDisplay }};align-items:center;justify-content:center;background:rgba(24,40,32,0.30);">
+    <div style="width:760px;max-height:92%;background:#fff;border-radius:16px;box-shadow:0 30px 80px -20px rgba(20,40,30,0.55);display:flex;flex-direction:column;overflow:hidden;">
+      <!-- head -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:24px 26px 16px;">
+        <div>
+          <div style="font:500 20px Inter;color:#272727;letter-spacing:-0.012em;">Mở dự án robot</div>
+          <div style="font:400 13px Inter;color:#7a7a7a;margin-top:5px;">Chọn thư mục ROS package chứa <b style="color:#272727;font-weight:500;">urdf/</b> và <b style="color:#272727;font-weight:500;">meshes/</b> (STL). App tự nhận dạng số bậc tự do, joint, trục &amp; giới hạn.</div>
+          <div style="font:400 12px Inter;color:#a6a6a6;margin-top:6px;">Trên bản xem trước web sẽ hiện hộp thoại chọn thư mục của trình duyệt. Mở app trên máy (Chrome/Edge) để nhớ thư mục gần đây.</div>
+        </div>
+        <button onClick="{{ onCloseProj }}" style="width:34px;height:34px;flex:none;border:none;border-radius:999px;background:#eff2f0;cursor:pointer;font:400 18px Inter;color:#7a7a7a;line-height:1;">✕</button>
+      </div>
+
+      <div style="padding:0 26px 24px;overflow:auto;">
+        <!-- picker -->
+        <div style="display:flex;gap:10px;">
+          <button onClick="{{ onPickFolder }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;height:52px;border:none;border-radius:12px;background:var(--acc,#28ab67);color:#fff;font:500 15px Inter;cursor:pointer;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            Chọn thư mục dự án…
+          </button>
+          <button onClick="{{ onSample }}" style="flex:none;height:52px;padding:0 18px;border:1px solid #e2e6e4;border-radius:12px;background:#fff;color:#272727;font:500 14px Inter;cursor:pointer;">Thử mẫu 3 bậc</button>
+        </div>
+
+        <!-- path / status -->
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;background:#f6f8f7;border-radius:10px;padding:12px 14px;">
+          <span style="font:500 10px Inter;letter-spacing:0.06em;text-transform:uppercase;color:#a6a6a6;flex:none;">Thư mục</span>
+          <span style="flex:1;min-width:0;font:400 13px ui-monospace,Menlo,monospace;color: {{ loadColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ loadMsg }}</span>
+        </div>
+
+        <!-- recents -->
+        <div style="margin-top:18px;font:500 12px Inter;letter-spacing:0.04em;text-transform:uppercase;color:#a6a6a6;">Mở gần đây</div>
+        <sc-if value="{{ hasRecents }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+            <sc-for list="{{ recents }}" as="r" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #edf0ee;border-radius:10px;padding:11px 12px;">
+                <div onClick="{{ r.onOpen }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:11px;cursor:pointer;">
+                  <div style="width:34px;height:34px;flex:none;border-radius:8px;background:#edf9f3;display:flex;align-items:center;justify-content:center;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acc,#28ab67)" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  </div>
+                  <div style="min-width:0;">
+                    <div style="font:500 14px Inter;color:#272727;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.name }}</div>
+                    <div style="font:400 11px Inter;color:#a6a6a6;margin-top:2px;">{{ r.time }}</div>
+                  </div>
+                </div>
+                <button onClick="{{ r.onRemove }}" style="width:28px;height:28px;flex:none;border:none;border-radius:7px;background:transparent;cursor:pointer;font:400 15px Inter;color:#bcbcbc;line-height:1;">✕</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noRecents }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:8px;font:400 13px Inter;color:#a6a6a6;padding:14px;background:#f6f8f7;border-radius:10px;">Chưa có dự án nào. Chọn một thư mục để bắt đầu — lần sau sẽ hiện ở đây.</div>
+        </sc-if>
+
+        <!-- detected model -->
+        <div style="margin-top:20px;display:flex;align-items:baseline;justify-content:space-between;">
+          <span style="font:500 12px Inter;letter-spacing:0.04em;text-transform:uppercase;color:#a6a6a6;">Mô hình đang dùng</span>
+          <span style="font:500 13px Inter;color:#272727;">{{ modelName }} · <span style="color:var(--acc,#28ab67);">{{ modelDof }} bậc tự do</span></span>
+        </div>
+        <div style="margin-top:8px;border:1px solid #edf0ee;border-radius:10px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;background:#f6f8f7;font:500 10px Inter;letter-spacing:0.05em;text-transform:uppercase;color:#a6a6a6;">
+            <span style="flex:1;">Joint</span><span style="width:74px;">Kiểu</span><span style="width:44px;text-align:center;">Trục</span><span style="width:132px;text-align:right;">Giới hạn</span>
+          </div>
+          <sc-for list="{{ modelJoints }}" as="j" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid #f1f3f2;">
+              <span style="flex:1;font:500 13px Inter;color:#272727;">{{ j.name }}</span>
+              <span style="width:74px;font:400 12px Inter;color:#7a7a7a;">{{ j.type }}</span>
+              <span style="width:44px;text-align:center;font:500 12px ui-monospace,Menlo,monospace;color:var(--acc,#28ab67);">{{ j.axis }}</span>
+              <span style="width:132px;text-align:right;font:400 12px ui-monospace,Menlo,monospace;color:#272727;">{{ j.range }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL : KẾT NỐI ROBOT ============ -->
+  <div style="position:absolute;inset:0;z-index:31;display: {{ connDisplay }};align-items:center;justify-content:center;background:rgba(24,40,32,0.30);">
+    <div style="width:600px;background:#fff;border-radius:16px;box-shadow:0 30px 80px -20px rgba(20,40,30,0.55);display:flex;flex-direction:column;overflow:hidden;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:24px 26px 12px;">
+        <div>
+          <div style="font:500 20px Inter;color:#272727;letter-spacing:-0.012em;">Kết nối robot</div>
+          <div style="font:400 13px Inter;color:#7a7a7a;margin-top:5px;">Chọn <b style="color:#272727;font-weight:500;">một</b> kênh giao tiếp. Bật kênh này sẽ tự tắt kênh kia.</div>
+        </div>
+        <button onClick="{{ onCloseConn }}" style="width:34px;height:34px;flex:none;border:none;border-radius:999px;background:#eff2f0;cursor:pointer;font:400 18px Inter;color:#7a7a7a;line-height:1;">✕</button>
+      </div>
+
+      <div style="padding:0 26px 24px;">
+        <!-- transport selector -->
+        <div style="display:flex;gap:10px;">
+          <button onClick="{{ onSelUart }}" style="flex:1;text-align:left;border:1.5px solid {{ uartBorder }};background: {{ uartCardBg }};border-radius:12px;padding:13px 15px;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <span style="width:16px;height:16px;flex:none;border-radius:999px;border:2px solid {{ uartRing }};display:flex;align-items:center;justify-content:center;"><span style="width:8px;height:8px;border-radius:999px;background: {{ uartDot }};"></span></span>
+              <span style="font:500 14px Inter;color:#272727;">UART · USB‑TTL</span>
+            </div>
+            <div style="font:400 11px Inter;color:#7a7a7a;margin-top:6px;padding-left:25px;">Cổng COM nối tiếp · baud tùy chọn tới 6 Mbps</div>
+          </button>
+          <button onClick="{{ onSelTcp }}" style="flex:1;text-align:left;border:1.5px solid {{ tcpBorder }};background: {{ tcpCardBg }};border-radius:12px;padding:13px 15px;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <span style="width:16px;height:16px;flex:none;border-radius:999px;border:2px solid {{ tcpRing }};display:flex;align-items:center;justify-content:center;"><span style="width:8px;height:8px;border-radius:999px;background: {{ tcpDot }};"></span></span>
+              <span style="font:500 14px Inter;color:#272727;">TCP/IP · ESP32</span>
+            </div>
+            <div style="font:400 11px Inter;color:#7a7a7a;margin-top:6px;padding-left:25px;">ESP32 chế độ AP/STA · nhập địa chỉ IP</div>
+          </button>
+        </div>
+
+        <!-- UART fields -->
+        <div style="margin-top:16px;display: {{ uartFieldsDisp }};flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <div style="font:500 10px Inter;letter-spacing:0.06em;text-transform:uppercase;color:#a6a6a6;margin-bottom:6px;">Cổng COM</div>
+              <div style="display:flex;gap:8px;">
+                <select ref="{{ setPortSel }}" style="flex:1;height:44px;border:none;background:#eff2f0;border-radius:8px;padding:0 12px;font:400 14px Inter;color:#272727;cursor:pointer;">
+                  <sc-for list="{{ portOptions }}" as="p" hint-placeholder-count="2">
+                    <option value="{{ p.value }}">{{ p.label }}</option>
+                  </sc-for>
+                </select>
+                <button onClick="{{ onRefreshPorts }}" title="Quét lại cổng" style="width:44px;height:44px;flex:none;border:none;border-radius:8px;background:#eff2f0;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#272727" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"></path></svg></button>
+              </div>
+            </div>
+            <div style="width:210px;">
+              <div style="font:500 10px Inter;letter-spacing:0.06em;text-transform:uppercase;color:#a6a6a6;margin-bottom:6px;">Baud rate</div>
+              <input ref="{{ setBaudInput }}" type="number" value="{{ baudDefault }}" style="width:100%;height:44px;border:none;background:#eff2f0;border-radius:8px;padding:0 14px;font:400 14px Inter;color:#272727;box-sizing:border-box;">
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <sc-for list="{{ baudChips }}" as="b" hint-placeholder-count="6">
+              <button onClick="{{ b.onPick }}" style="border:none;border-radius:999px;padding:6px 12px;background:#eff2f0;color:#272727;font:500 12px Inter;cursor:pointer;">{{ b.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- TCP fields -->
+        <div style="margin-top:16px;display: {{ tcpFieldsDisp }};gap:12px;">
+          <div style="flex:1;">
+            <div style="font:500 10px Inter;letter-spacing:0.06em;text-transform:uppercase;color:#a6a6a6;margin-bottom:6px;">Địa chỉ IP (ESP32)</div>
+            <input ref="{{ setIpInput }}" type="text" value="{{ ipDefault }}" placeholder="192.168.4.1" style="width:100%;height:44px;border:none;background:#eff2f0;border-radius:8px;padding:0 14px;font:400 14px ui-monospace,Menlo,monospace;color:#272727;box-sizing:border-box;">
+          </div>
+          <div style="width:150px;">
+            <div style="font:500 10px Inter;letter-spacing:0.06em;text-transform:uppercase;color:#a6a6a6;margin-bottom:6px;">Cổng TCP</div>
+            <input ref="{{ setTcpPortInput }}" type="number" value="{{ tcpPortDefault }}" style="width:100%;height:44px;border:none;background:#eff2f0;border-radius:8px;padding:0 14px;font:400 14px Inter;color:#272727;box-sizing:border-box;">
+          </div>
+        </div>
+
+        <!-- status + actions -->
+        <div style="margin-top:16px;display:flex;align-items:center;gap:10px;background:#f6f8f7;border-radius:10px;padding:12px 14px;">
+          <span style="width:9px;height:9px;flex:none;border-radius:999px;background: {{ connDot }};"></span>
+          <span style="flex:1;min-width:0;font:400 13px Inter;color: {{ connStatusColor }};">{{ connStatusMsg }}</span>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;">
+          <button onClick="{{ onConnect }}" style="flex:1;height:48px;border:none;border-radius:12px;background: {{ connectBtnBg }};color:#fff;font:500 15px Inter;cursor:pointer;">{{ connectBtnLabel }}</button>
+          <button onClick="{{ onDisconnect }}" style="flex:none;height:48px;padding:0 20px;border:1px solid #e2e6e4;border-radius:12px;background:#fff;color: {{ disconnectFg }};font:500 15px Inter;cursor:pointer;">Ngắt kết nối</button>
+        </div>
+        <div style="margin-top:12px;font:400 11px Inter;color:#a6a6a6;">Kênh nối tiếp cần backend đang chạy (server.py). Mở app bằng file trực tiếp sẽ ở chế độ demo — không mở được COM.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="16" fill="#edf9f3"/><g transform="translate(50 64)" stroke="#28ab67" stroke-width="4.5" stroke-linecap="round" fill="none"><circle cx="0" cy="6" r="5" fill="#28ab67" stroke="none"/><path d="M0 6 L0 -8"/><path d="M0 -8 L20 -22"/><path d="M20 -22 L14 -38"/><circle cx="0" cy="-8" r="3.4" fill="#fff"/><circle cx="20" cy="-22" r="3.4" fill="#fff"/></g></svg>
+</template></x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#28ab67&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#28ab67&quot;,&quot;#0ea5a3&quot;,&quot;#2563eb&quot;],&quot;section&quot;:&quot;Giao diện&quot;},&quot;showGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Giao diện&quot;},&quot;autoDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;}}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.meta=[
+      {name:'J1',min:-170,max:170,maxTq:90,home:20},
+      {name:'J2',min:-120,max:120,maxTq:90,home:-35},
+      {name:'J3',min:-150,max:150,maxTq:70,home:55},
+      {name:'J4',min:-180,max:180,maxTq:35,home:0},
+      {name:'J5',min:-120,max:120,maxTq:35,home:50},
+      {name:'J6',min:-360,max:360,maxTq:20,home:0}
+    ];
+    this.N=this.meta.length;
+    this.modelName='hibot_arm_6dof';
+    this.urdf=null;
+    this.home=this.meta.map(m=>m.home);
+    this.ang=this.home.slice();
+    this.jog=this.home.slice();
+    this.prev=this.home.slice();
+    this.tq=this.meta.map(()=>0);
+    this.ws=null; this.live=false; this._gotLive=false;
+    this.BAUDS=[9600,115200,230400,460800,921600,1000000,2000000,3000000,6000000];
+    this.SAMPLE3='<?xml version="1.0"?>\n<robot name="sample_gimbal_3dof">\n'+
+      '<link name="base_link"><visual><origin xyz="0 0 0.02"/><geometry><cylinder radius="0.09" length="0.04"/></geometry></visual></link>\n'+
+      '<link name="yaw_link"><visual><origin xyz="0 0 0.05"/><geometry><cylinder radius="0.05" length="0.10"/></geometry></visual></link>\n'+
+      '<link name="pitch_link"><visual><origin xyz="0.07 0 0"/><geometry><box size="0.16 0.05 0.05"/></geometry></visual></link>\n'+
+      '<link name="roll_link"><visual><origin xyz="0.05 0 0"/><geometry><box size="0.11 0.03 0.03"/></geometry></visual></link>\n'+
+      '<joint name="yaw" type="revolute"><parent link="base_link"/><child link="yaw_link"/><origin xyz="0 0 0.04"/><axis xyz="0 0 1"/><limit lower="-3.14" upper="3.14" effort="20" velocity="2"/></joint>\n'+
+      '<joint name="pitch" type="revolute"><parent link="yaw_link"/><child link="pitch_link"/><origin xyz="0 0 0.10"/><axis xyz="0 1 0"/><limit lower="-1.57" upper="1.57" effort="15" velocity="2"/></joint>\n'+
+      '<joint name="roll" type="revolute"><parent link="pitch_link"/><child link="roll_link"/><origin xyz="0.14 0 0"/><axis xyz="1 0 0"/><limit lower="-1.0" upper="1.0" effort="8" velocity="2"/></joint>\n'+
+      '</robot>';
+    // monitor demo params
+    this.amp=[42,22,26,72,28,110];
+    this.frq=[0.13,0.10,0.12,0.17,0.14,0.20];
+    this.pha=[0,1.1,2.0,0.6,2.7,1.5];
+    // trajectory waypoints
+    this.wpNames=['Home','Tiếp cận','Gắp','Nâng','Đặt','Home'];
+    this.wpPos=[0,0.18,0.38,0.56,0.80,1.0];
+    this.wp=[
+      [20,-35,55,0,50,0],
+      [60,-15,40,0,65,10],
+      [60,12,18,0,58,10],
+      [60,-22,46,0,72,10],
+      [-42,-8,30,0,60,-20],
+      [20,-35,55,0,50,0]
+    ];
+    this.clock0=10*3600+25*60+2;
+    this.grav=[6,52,30,5,8,3];
+    this.vc=[0.045,0.07,0.055,0.03,0.03,0.02];
+    this.state={
+      angT:this.ang.slice(), tq:this.tq.slice(),
+      tcp:{x:0,y:0,z:0,rx:0,ry:0,rz:0},
+      mode:'monitor', enabled:true, estop:false,
+      speed:45, sel:-1, step:5,
+      trajPlaying:false, trajT:0, grid:props.showGrid!==false, link:false,
+      projOpen:false, loadMsg:'Chưa chọn thư mục', loadColor:'#7a7a7a', recents:[],
+      connOpen:false, transport:'uart', ports:[], uartPort:'', baud:115200,
+      tcpIp:'192.168.4.1', tcpPort:5000,
+      connState:'disconnected', connStatusMsg:'Chưa kết nối', connStatusColor:'#7a7a7a',
+      logs:[
+        {t:'10:25:02',c:'#5a6661',m:'Nạp URDF hibot_arm_6dof — 7 link, 6 joint'},
+        {t:'10:25:02',c:'#5a6661',m:'Kết nối VD-CTRL-6 @ 192.168.1.20'},
+        {t:'10:25:03',c:'#1f9559',m:'Servo ON · 6/6 trục'},
+        {t:'10:25:04',c:'#5a6661',m:'Chế độ: Giám sát trực tiếp'}
+      ],
+      clock:'10:25:04'
+    };
+    this.setStage=(el)=>{ if(el) this.stage=el; };
+    this.setCanvas=(el)=>{ if(el) this.canvas=el; };
+    this.setFileInput=(el)=>{ if(el){ this._fileInput=el; el.setAttribute('webkitdirectory',''); el.setAttribute('directory',''); el.setAttribute('multiple',''); } };
+    this.setPortSel=(el)=>{ if(el) this._portSel=el; };
+    this.setBaudInput=(el)=>{ if(el) this._baudInput=el; };
+    this.setIpInput=(el)=>{ if(el) this._ipInput=el; };
+    this.setTcpPortInput=(el)=>{ if(el) this._tcpPortInput=el; };
+  }
+  componentDidMount(){
+    this._m=true; this.t0=performance.now(); this._uiAcc=0;
+    this._fit=()=>this.fit();
+    window.addEventListener('resize',this._fit);
+    this.fit();
+    this.waitThree(()=>this.initAll());
+    this.initLink();
+    this.refreshRecents();
+  }
+  componentWillUnmount(){
+    this._m=false;
+    if(this._timer) clearInterval(this._timer);
+    if(this.ws){ try{ this.ws.close(); }catch(e){} }
+    window.removeEventListener('resize',this._fit);
+  }
+  fit(){
+    if(!this.stage) return;
+    const s=Math.min(window.innerWidth/1920, window.innerHeight/1080);
+    this.stage.style.transform='scale('+s+')';
+  }
+  waitThree(cb){
+    if(window.THREE) return cb();
+    let n=0; const iv=setInterval(()=>{ if(window.THREE){clearInterval(iv);cb();} else if(++n>160)clearInterval(iv); },50);
+  }
+  initAll(){
+    if(this._inited) return; this._inited=true;
+    this._gl=this.supportsWebGL();
+    this.arm=this.canvas?this.makeViz(this.canvas):null;
+    this._last=performance.now();
+    this._timer=setInterval(()=>this.tick(),40);
+  }
+  supportsWebGL(){
+    try{ const c=document.createElement('canvas'); return !!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl'))); }
+    catch(e){ return false; }
+  }
+  makeViz(cv){
+    if(this._gl){ try{ return this.makeScene(cv); }catch(e){ this._gl=false; } }
+    return this.make2d(cv);
+  }
+  make2d(cv){
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const w=cv.clientWidth||980, h=cv.clientHeight||560;
+    cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+    const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {mode:'2d',ctx,cv,dpr};
+  }
+  buildArm(THREE){
+    const g=new THREE.Group();
+    const metal=new THREE.MeshStandardMaterial({color:0xcdd5d0,metalness:0.55,roughness:0.42});
+    const dark=new THREE.MeshStandardMaterial({color:0x39433e,metalness:0.5,roughness:0.5});
+    const acc=new THREE.Color(this.props.accent||'#28ab67');
+    const accent=new THREE.MeshStandardMaterial({color:acc,metalness:0.25,roughness:0.4});
+    const white=new THREE.MeshStandardMaterial({color:0xeef2f0,metalness:0.2,roughness:0.6});
+    const ring=(r)=>new THREE.Mesh(new THREE.TorusGeometry(r,0.07,16,40),accent);
+    const cyl=(rt,rb,h,m)=>new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,40),m);
+    const box=(w,h,d,m)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+    const base=cyl(1.0,1.35,0.5,dark); base.position.y=0.25; g.add(base);
+    const plate=cyl(0.95,0.95,0.12,metal); plate.position.y=0.55; g.add(plate);
+    const j1=new THREE.Group(); j1.position.y=0.6; g.add(j1);
+    const h1=cyl(0.8,0.85,0.7,metal); h1.position.y=0.35; j1.add(h1);
+    const r1=ring(0.8); r1.position.y=0.7; r1.rotation.x=Math.PI/2; j1.add(r1);
+    const j2=new THREE.Group(); j2.position.y=0.78; j1.add(j2);
+    const sh=box(0.9,0.7,1.0,dark); j2.add(sh);
+    const r2=ring(0.5); r2.rotation.y=Math.PI/2; j2.add(r2);
+    const upper=box(0.55,2.0,0.62,metal); upper.position.y=1.05; j2.add(upper);
+    const upperStripe=box(0.58,0.18,0.66,accent); upperStripe.position.y=1.82; j2.add(upperStripe);
+    const j3=new THREE.Group(); j3.position.y=2.05; j2.add(j3);
+    const el=box(0.7,0.6,0.8,dark); j3.add(el);
+    const r3=ring(0.42); r3.rotation.y=Math.PI/2; j3.add(r3);
+    const fore=box(0.42,1.55,0.48,metal); fore.position.y=0.85; j3.add(fore);
+    const j4=new THREE.Group(); j4.position.y=1.55; j3.add(j4);
+    const fr=cyl(0.3,0.32,0.6,white); fr.position.y=0.3; j4.add(fr);
+    const r4=ring(0.3); r4.position.y=0.55; r4.rotation.x=Math.PI/2; j4.add(r4);
+    const j5=new THREE.Group(); j5.position.y=0.62; j4.add(j5);
+    const wr=box(0.5,0.42,0.5,dark); j5.add(wr);
+    const r5=ring(0.26); r5.rotation.y=Math.PI/2; j5.add(r5);
+    const j6=new THREE.Group(); j6.position.y=0.34; j5.add(j6);
+    const fl=cyl(0.28,0.28,0.16,accent); fl.position.y=0.08; j6.add(fl);
+    const flface=cyl(0.2,0.2,0.05,metal); flface.position.y=0.18; j6.add(flface);
+    const gb=box(0.34,0.12,0.34,dark); gb.position.y=0.26; j6.add(gb);
+    const f1=box(0.06,0.32,0.12,metal); f1.position.set(0.12,0.43,0); j6.add(f1);
+    const f2=box(0.06,0.32,0.12,metal); f2.position.set(-0.12,0.43,0); j6.add(f2);
+    const flange=new THREE.Object3D(); flange.position.y=0.6; j6.add(flange);
+    g.traverse(o=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+    return {group:g, joints:[j1,j2,j3,j4,j5,j6], flange};
+  }
+  makeScene(cv){
+    const THREE=window.THREE;
+    const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
+    renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    if(THREE.sRGBEncoding) renderer.outputEncoding=THREE.sRGBEncoding;
+    const w=cv.clientWidth||980, h=cv.clientHeight||560;
+    renderer.setSize(w,h,false);
+    const scene=new THREE.Scene();
+    const camera=new THREE.PerspectiveCamera(35,w/h,0.1,100);
+    const ctrl={ az:0.66, pol:0.95, rad:10.5, tx:0, ty:2.4, tz:0, min:0.4, max:120 };
+    ctrl.home={ az:0.66, pol:0.95, rad:10.5, tx:0, ty:2.4, tz:0, min:0.4, max:120 };
+    scene.add(new THREE.HemisphereLight(0xffffff,0xc2ccc6,0.72));
+    scene.add(new THREE.AmbientLight(0xffffff,0.26));
+    const dir=new THREE.DirectionalLight(0xffffff,0.95);
+    dir.position.set(6,11,5); dir.castShadow=true;
+    dir.shadow.mapSize.set(1024,1024);
+    dir.shadow.camera.near=1; dir.shadow.camera.far=44;
+    dir.shadow.camera.left=-9; dir.shadow.camera.right=9; dir.shadow.camera.top=9; dir.shadow.camera.bottom=-9;
+    dir.shadow.bias=-0.0005; scene.add(dir);
+    const fill=new THREE.DirectionalLight(0x88ffbb,0.16); fill.position.set(-5,3,-4); scene.add(fill);
+    const gm=new THREE.Mesh(new THREE.PlaneGeometry(44,44), new THREE.ShadowMaterial({opacity:0.16}));
+    gm.rotation.x=-Math.PI/2; gm.receiveShadow=true; scene.add(gm);
+    const grid=new THREE.GridHelper(28,28,0xc7d2cc,0xdde6e1);
+    grid.material.opacity=0.55; grid.material.transparent=true; scene.add(grid);
+    const arm=this.buildArm(THREE); scene.add(arm.group);
+    const S={mode:'3d',renderer,scene,camera,joints:arm.joints,flange:arm.flange,grid,ground:gm,armGroup:arm.group,ctrl,cv};
+    this.applyCam(S);
+    this.attachControls(S);
+    return S;
+  }
+  applyCam(S){
+    const c=S.ctrl, pol=Math.max(0.06,Math.min(Math.PI-0.06,c.pol));
+    c.pol=pol; c.rad=Math.max(c.min,Math.min(c.max,c.rad));
+    const sp=Math.sin(pol), x=c.tx+c.rad*sp*Math.cos(c.az), y=c.ty+c.rad*Math.cos(pol), z=c.tz+c.rad*sp*Math.sin(c.az);
+    S.camera.position.set(x,y,z); S.camera.lookAt(c.tx,c.ty,c.tz);
+  }
+  attachControls(S){
+    const cv=S.cv, c=S.ctrl;
+    cv.style.cursor='grab';
+    const drag={active:false,btn:0,x:0,y:0};
+    cv.addEventListener('contextmenu',e=>e.preventDefault());
+    cv.addEventListener('wheel',(e)=>{
+      e.preventDefault();
+      const f=Math.exp((e.deltaY||0)*0.0012);
+      c.rad=Math.max(c.min,Math.min(c.max,c.rad*f));
+    },{passive:false});
+    cv.addEventListener('pointerdown',(e)=>{
+      drag.active=true; drag.btn=e.button; drag.x=e.clientX; drag.y=e.clientY;
+      cv.setPointerCapture(e.pointerId); cv.style.cursor=(e.button===0)?'grabbing':'move'; e.preventDefault();
+    });
+    cv.addEventListener('pointermove',(e)=>{
+      if(!drag.active) return;
+      const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
+      const pan=(drag.btn===1)||(drag.btn===2)||(drag.btn===0&&(e.shiftKey||e.ctrlKey));
+      if(pan){
+        // pan: theo trục X chuột → trái/phải, trục Y chuột → lên/xuống (theo mặt phẳng camera)
+        const k=c.rad*0.0016;
+        const right=new THREE.Vector3(), up=new THREE.Vector3();
+        S.camera.matrixWorld.extractBasis(right,up,new THREE.Vector3());
+        c.tx += (-dx*right.x + dy*up.x)*k;
+        c.ty += (-dx*right.y + dy*up.y)*k;
+        c.tz += (-dx*right.z + dy*up.z)*k;
+      } else {
+        c.az += dx*0.007; c.pol -= dy*0.007;
+      }
+    });
+    const end=(e)=>{ drag.active=false; cv.style.cursor='grab'; try{cv.releasePointerCapture(e.pointerId);}catch(_){} };
+    cv.addEventListener('pointerup',end);
+    cv.addEventListener('pointercancel',end);
+  }
+  resetCam(){
+    const S=this.arm; if(!S||S.mode!=='3d'||!S.ctrl) return;
+    const h=S.ctrl.home; if(h){ Object.assign(S.ctrl,h); }
+  }
+  // ---------- Nạp mô hình URDF ----------
+  refreshRecents(){ if(window.URDFKit&&window.URDFKit.listRecents) window.URDFKit.listRecents().then(r=>{ if(this._m) this.setState({recents:r}); }); }
+  setStatus(msg,color){ this.setState({loadMsg:msg,loadColor:color||'#7a7a7a'}); }
+  inIframe(){ try{ return window.self!==window.top; }catch(e){ return true; } }
+  pickViaInput(){
+    if(this._fileInput){ this._fileInput.value=''; this._fileInput.click(); }
+    else this.setStatus('Không mở được hộp thoại chọn thư mục','#be123c');
+  }
+  async openProject(){
+    // Trong iframe cross-origin (bản xem trước trên web) showDirectoryPicker bị chặn → dùng input thư mục
+    if(!window.showDirectoryPicker || this.inIframe()){ this.pickViaInput(); return; }
+    try{
+      const dir=await window.showDirectoryPicker({mode:'read'});
+      await this.loadFs(window.URDFKit.fsFromHandle(dir),{handle:dir});
+    }catch(e){
+      if(e&&e.name==='AbortError') return;                 // người dùng huỷ
+      this.pickViaInput();                                  // mọi lỗi khác → thử input thư mục
+    }
+  }
+  onFolderPicked(e){
+    const files=e.target.files;
+    if(files&&files.length) this.loadFs(window.URDFKit.fsFromFileList(files),{});
+    else this.setStatus('Chưa chọn thư mục nào','#7a7a7a');
+  }
+  async openRecent(rec){
+    try{
+      let perm='granted';
+      if(rec.handle&&rec.handle.requestPermission) perm=await rec.handle.requestPermission({mode:'read'});
+      if(perm==='granted') await this.loadFs(window.URDFKit.fsFromHandle(rec.handle),{handle:rec.handle});
+      else this.setStatus('Không được cấp quyền đọc thư mục này','#be123c');
+    }catch(e){ this.setStatus('Lỗi mở lại: '+e.message,'#be123c'); }
+  }
+  async removeRecent(rec){ if(window.URDFKit.removeRecent){ await window.URDFKit.removeRecent(rec.id); this.refreshRecents(); } }
+  async loadFs(fs,meta){
+    try{
+      this.setStatus('Đang đọc thư mục '+(fs.name||'')+'…','#5a6661');
+      const files=await fs.list();
+      const urdfPath=files.find(f=>/(^|\/)urdf\/[^/]+\.urdf$/i.test(f))||files.find(f=>/\.urdf$/i.test(f))||files.find(f=>/\.xacro$/i.test(f));
+      if(!urdfPath) throw new Error('Không tìm thấy file .urdf trong thư mục');
+      const parsed=window.URDFKit.parseURDF(await fs.getText(urdfPath));
+      const dof=parsed.joints.filter(j=>j.type!=='fixed').length;
+      if(!dof) throw new Error('URDF không có khớp chuyển động');
+      this.setStatus('Đang dựng mô hình '+parsed.name+' ('+dof+' bậc)…','#5a6661');
+      const built=await window.URDFKit.buildRobot(window.THREE,parsed,fs,{accent:this.props.accent});
+      this.applyModel(parsed,built);
+      this.mountUrdf(built);
+      if(meta&&meta.handle&&window.URDFKit.saveRecent){
+        await window.URDFKit.saveRecent({id:'h:'+meta.handle.name,name:meta.handle.name,handle:meta.handle,ts:Date.now()});
+        this.refreshRecents();
+      }
+      const meshInfo=built.meshTotal?(' · mesh '+built.loadedMesh+'/'+built.meshTotal):'';
+      const warn=built.missingMesh?(' · '+built.missingMesh+' mesh thiếu'):'';
+      const noGL=(this.arm&&this.arm.mode!=='3d');
+      this.setStatus(fs.name+' · '+parsed.name+' · '+dof+' bậc'+meshInfo+warn+(noGL?' · (WebGL tắt: xem 2D)':''), (built.missingMesh||noGL)?'#b8860b':'#1f9559');
+      this.addLog('Nạp URDF: '+parsed.name+' — '+built.linkCount+' link, '+dof+' joint'+meshInfo+warn,'#1f9559');
+      if(built.meshTotal&&built.loadedMesh===0) this.addLog('Cảnh báo: không nạp được STL nào — kiểm tra thư mục meshes/ và đường dẫn trong URDF','#be123c');
+      this.setState({projOpen:false,mode:'monitor'});
+    }catch(e){ this.setStatus('Lỗi: '+e.message,'#be123c'); this.addLog('Lỗi nạp URDF: '+e.message,'#be123c'); }
+  }
+  loadSample(){
+    try{
+      const parsed=window.URDFKit.parseURDF(this.SAMPLE3);
+      const noFs={ getBuffer(){ return Promise.reject(new Error('no mesh')); } };
+      window.URDFKit.buildRobot(window.THREE,parsed,noFs,{accent:this.props.accent}).then(built=>{
+        this.applyModel(parsed,built); this.mountUrdf(built);
+        this.setStatus('Mẫu · '+parsed.name+' · 3 bậc','#1f9559');
+        this.addLog('Nạp mẫu URDF: '+parsed.name+' — 3 bậc','#1f9559');
+        this.setState({projOpen:false,mode:'monitor'});
+      });
+    }catch(e){ this.setStatus('Lỗi mẫu: '+e.message,'#be123c'); }
+  }
+  axisLabel(v){ const ax=['X','Y','Z']; let b=0,bi=0; for(let i=0;i<3;i++){ if(Math.abs(v[i])>b){b=Math.abs(v[i]);bi=i;} } return (v[bi]<0?'−':'')+ax[bi]; }
+  applyModel(parsed,built){
+    const mv=built.movable;
+    const meta=mv.map(m=>{
+      const j=m.joint, prism=(j.type==='prismatic');
+      let lo=-180,hi=180,eff=40;
+      if(j.limit){ if(prism){ lo=j.limit.lower*1000; hi=j.limit.upper*1000; } else { lo=j.limit.lower*180/Math.PI; hi=j.limit.upper*180/Math.PI; } eff=j.limit.effort||40; }
+      return { name:j.name, min:Math.round(lo), max:Math.round(hi), maxTq:Math.max(1,Math.round(eff)), home:0, type:j.type, prism, axisL:this.axisLabel(j.axis) };
+    });
+    this.meta=meta; this.N=meta.length; this.modelName=parsed.name;
+    this.home=meta.map(m=>this.clamp(0,m.min,m.max));
+    this.ang=this.home.slice(); this.jog=this.home.slice(); this.prev=this.home.slice(); this.tq=meta.map(()=>0);
+    this.amp=meta.map(m=>Math.min(45,(m.max-m.min)*0.16));
+    this.frq=meta.map((m,i)=>0.07+0.018*i);
+    this.pha=meta.map((m,i)=>i*0.8);
+    this.grav=meta.map(m=>m.maxTq*0.34);
+    this.vc=meta.map(()=>0.04);
+    const mk=f=>meta.map(m=>m.min+(m.max-m.min)*f);
+    this.wp=[this.home.slice(),mk(0.7),mk(0.32),this.home.slice()];
+    this.wpPos=[0,0.4,0.7,1.0]; this.wpNames=['Home','P1','P2','Home'];
+    this.urdf=built;
+    this.setState({trajT:0,trajPlaying:false,sel:-1,angT:this.ang.slice(),tq:this.tq.slice()});
+  }
+  mountUrdf(built){
+    const THREE=window.THREE, a=this.arm;
+    if(!a||a.mode!=='3d'){ return; }
+    if(a.armGroup){ a.scene.remove(a.armGroup); }
+    if(a.axes){ a.scene.remove(a.axes); a.axes=null; }
+    a.scene.add(built.root); a.armGroup=built.root;
+    // QUAN TRỌNG: cập nhật ma trận thế giới TRƯỚC khi tính bounding box,
+    // nếu không camera sẽ ngắm sai chỗ và robot nằm ngoài khung nhìn.
+    built.root.updateMatrixWorld(true);
+    a.scene.updateMatrixWorld(true);
+    let box=new THREE.Box3().setFromObject(built.root);
+    if(box.isEmpty()||!isFinite(box.min.x)){ box=new THREE.Box3(new THREE.Vector3(-0.25,-0.25,-0.25),new THREE.Vector3(0.25,0.25,0.25)); }
+    const c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
+    const rad=Math.max(sz.x,sz.y,sz.z,0.02)*0.5;
+    const ct=a.ctrl;
+    ct.tx=c.x; ct.ty=c.y; ct.tz=c.z;
+    ct.rad=rad*3.2; ct.az=0.66; ct.pol=0.95;
+    ct.min=rad*0.12; ct.max=rad*80;
+    ct.home={ tx:c.x, ty:c.y, tz:c.z, rad:rad*3.2, az:0.66, pol:0.95, min:ct.min, max:ct.max };
+    a.camera.near=Math.max(rad/1000,0.001); a.camera.far=Math.max(50,rad*200); a.camera.updateProjectionMatrix();
+    // trục toạ độ tại tâm model (luôn hiện, không phụ thuộc vật liệu/ánh sáng)
+    const axes=new THREE.AxesHelper(rad*1.4); axes.position.copy(c); a.scene.add(axes); a.axes=axes;
+    if(a.grid){ a.scene.remove(a.grid); const gs=Math.max(0.2,rad*6); const g2=new THREE.GridHelper(gs,20,0xc7d2cc,0xdde6e1); g2.material.opacity=0.55; g2.material.transparent=true; g2.position.y=box.min.y; a.scene.add(g2); a.grid=g2; }
+    if(a.ground){ a.ground.position.y=box.min.y+0.0005; a.ground.scale.set(Math.max(1,rad*4/22),1,Math.max(1,rad*4/22)); }
+    this.applyCam(a);
+  }
+  tcpFromScene(){
+    const THREE=window.THREE, a=this.arm;
+    if(!this.urdf||!a||a.mode!=='3d'||!this.urdf.tip) return {x:0,y:0,z:0,rx:0,ry:0,rz:0};
+    const v=new THREE.Vector3(); this.urdf.tip.getWorldPosition(v);
+    const q=new THREE.Quaternion(); this.urdf.tip.getWorldQuaternion(q);
+    const e=new THREE.Euler().setFromQuaternion(q,'XYZ'), r2d=x=>x*180/Math.PI;
+    return { x:v.x*1000, y:-v.z*1000, z:v.y*1000, rx:r2d(e.x), ry:r2d(e.y), rz:r2d(e.z) };
+  }
+  rad(x){ return x*Math.PI/180; }
+  clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  computeTcp(ang){
+    const d=this.rad.bind(this);
+    const L2=2.0,L3=1.55,L4=0.95, base=1.4;
+    const a2=d(ang[1]), a3=a2+d(ang[2]), a5=a3+d(ang[4]);
+    let hx=0, hz=base;
+    hx+=L2*Math.sin(a2); hz+=L2*Math.cos(a2);
+    hx+=L3*Math.sin(a3); hz+=L3*Math.cos(a3);
+    hx+=L4*Math.sin(a5); hz+=L4*Math.cos(a5);
+    const yaw=d(ang[0]);
+    return { x:hx*Math.cos(yaw)*150, y:hx*Math.sin(yaw)*150, z:hz*150, rx:ang[1]+ang[2]+ang[4], ry:ang[3], rz:ang[5] };
+  }
+  interpPose(p){
+    const P=this.wp, X=this.wpPos;
+    if(p<=0) return P[0].slice();
+    if(p>=1) return P[P.length-1].slice();
+    for(let s=0;s<X.length-1;s++){
+      if(p>=X[s]&&p<=X[s+1]){ const f=(p-X[s])/(X[s+1]-X[s]); return P[s].map((v,i)=>v+(P[s+1][i]-v)*f); }
+    }
+    return P[P.length-1].slice();
+  }
+  fmtClock(){
+    const el=(performance.now()-this.t0)/1000;
+    let s=Math.floor(this.clock0+el);
+    const hh=Math.floor(s/3600)%24, mm=Math.floor(s/60)%60, ss=s%60;
+    const p=n=>(n<10?'0':'')+n;
+    return p(hh)+':'+p(mm)+':'+p(ss);
+  }
+  addLog(m,c){
+    const logs=[{t:this.fmtClock(),c:c||'#5a6661',m}].concat(this.state.logs).slice(0,24);
+    this.setState({logs});
+  }
+  tick(){
+    if(!this._m) return;
+    const now=performance.now();
+    let dt=(now-this._last)/1000; this._last=now; if(dt>0.2)dt=0.2;
+    const t=(now-this.t0)/1000;
+    const st=this.state;
+    const autoDemo=this.props.autoDemo!==false;
+    if(!this.live && !st.estop && st.enabled){
+      if(st.mode==='monitor'){
+        if(autoDemo){
+          for(let i=0;i<this.N;i++){ const tgt=this.home[i]+this.amp[i]*Math.sin(2*Math.PI*this.frq[i]*t+this.pha[i]); this.ang[i]=this.clamp(tgt,this.meta[i].min,this.meta[i].max); }
+        }
+        this.jog=this.ang.slice();
+      } else if(st.mode==='jog'){
+        const k=Math.min(1,(0.08+st.speed/100*0.28));
+        for(let i=0;i<this.N;i++){ this.ang[i]+=(this.jog[i]-this.ang[i])*k; }
+      } else if(st.mode==='traj'){
+        if(st.trajPlaying){
+          const rate=0.035+st.speed/100*0.10;
+          let p=st.trajT+dt*rate; if(p>=1)p-=1;
+          this.state.trajT=p;
+          this.ang=this.interpPose(p);
+          this.jog=this.ang.slice();
+        } else {
+          const pose=this.interpPose(st.trajT);
+          const k=0.12; for(let i=0;i<this.N;i++){ this.ang[i]+=(pose[i]-this.ang[i])*k; }
+        }
+      }
+    }
+    // torque — chỉ tính khi mô phỏng cục bộ; chế độ live nhận mô-men từ controller
+    if(!this.live) for(let i=0;i<this.N;i++){
+      const vel=(this.ang[i]-this.prev[i])/dt;
+      let hold;
+      if(!this.urdf && i===1) hold=this.grav[1]*(0.5+0.55*Math.abs(Math.sin(this.rad(this.ang[1]))));
+      else if(!this.urdf && i===2) hold=this.grav[2]*(0.55+0.5*Math.abs(Math.sin(this.rad(this.ang[1]+this.ang[2]))));
+      else hold=this.grav[i]*(0.75+0.2*Math.abs(Math.sin(this.rad(this.ang[i]))));
+      let v=hold+this.vc[i]*Math.abs(vel)+0.6*Math.sin(t*1.3+i);
+      if(st.estop||!st.enabled) v*=0.04;
+      this.tq[i]=this.tq[i]+(v-this.tq[i])*0.3;
+      this.prev[i]=this.ang[i];
+    }
+    this.renderViz(t);
+    this._uiAcc+=dt;
+    if(this._uiAcc>=0.08){
+      this._uiAcc=0;
+      this.setState({ angT:this.ang.slice(), tq:this.tq.slice(), tcp:this.urdf?this.tcpFromScene():this.computeTcp(this.ang), trajT:this.state.trajT, clock:this.fmtClock() });
+    }
+  }
+  applyAngles(arm){
+    if(this.urdf){ const mv=this.urdf.movable; for(let i=0;i<mv.length;i++){ window.URDFKit.setJoint(mv[i],this.ang[i]); } return; }
+    if(!arm||!arm.joints) return;
+    const d=this.rad.bind(this); const j=arm.joints; const a=this.ang;
+    j[0].rotation.y=d(a[0]); j[1].rotation.z=-d(a[1]); j[2].rotation.z=-d(a[2]);
+    j[3].rotation.y=d(a[3]); j[4].rotation.z=-d(a[4]); j[5].rotation.y=d(a[5]);
+  }
+  renderViz(t){
+    const a=this.arm; if(!a) return;
+    try{
+      if(a.mode==='2d'){ this.draw2d(a,t); return; }
+      if(a.grid) a.grid.visible=this.state.grid;
+      this.applyAngles(a);
+      this.applyCam(a);
+      const gl=a.renderer.getContext&&a.renderer.getContext();
+      if(!gl) throw new Error('lost-gl');
+      a.renderer.render(a.scene,a.camera);
+    }catch(e){ try{ this.arm=this.make2d(a.cv); }catch(e2){ this.arm=null; } }
+  }
+  draw2d(a,t){
+    const ctx=a.ctx, ang=this.ang;
+    const W=a.cv.clientWidth||a.cv.width/a.dpr, H=a.cv.clientHeight||a.cv.height/a.dpr;
+    const acc=this.props.accent||'#28ab67';
+    ctx.clearRect(0,0,W,H);
+    if(this.urdf){
+      ctx.fillStyle='#7a7a7a'; ctx.textAlign='center';
+      ctx.font='500 16px Inter,sans-serif';
+      ctx.fillText('Mô hình URDF cần WebGL để hiển thị 3D', W/2, H/2-8);
+      ctx.font='400 12px Inter,sans-serif';
+      ctx.fillText('Mở app bằng Chrome/Edge/Firefox trên máy để xem robot dựng từ '+this.modelName, W/2, H/2+16);
+      return;
+    }
+    const baseX=W*0.5, baseY=H*0.82;
+    if(this.state.grid){
+      ctx.strokeStyle='rgba(199,210,204,0.4)'; ctx.lineWidth=1;
+      for(let i=0;i<16;i++){ const gx=46+i*((W-92)/15); ctx.beginPath(); ctx.moveTo(gx,baseY+2); ctx.lineTo(gx-12,baseY+13); ctx.stroke(); }
+    }
+    ctx.strokeStyle='rgba(199,210,204,0.85)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(40,baseY+2); ctx.lineTo(W-40,baseY+2); ctx.stroke();
+    const d=this.rad.bind(this);
+    const L1=66,L2=124,L3=100,L4=42;
+    const p0={x:baseX,y:baseY-8};
+    const pSh={x:p0.x,y:p0.y-L1};
+    const t2=-Math.PI/2+d(ang[1]);
+    const pEl={x:pSh.x+L2*Math.cos(t2),y:pSh.y+L2*Math.sin(t2)};
+    const t3=t2+d(ang[2]);
+    const pWr={x:pEl.x+L3*Math.cos(t3),y:pEl.y+L3*Math.sin(t3)};
+    const t5=t3+d(ang[4]);
+    const pTo={x:pWr.x+L4*Math.cos(t5),y:pWr.y+L4*Math.sin(t5)};
+    ctx.save(); ctx.fillStyle='rgba(30,60,45,0.10)';
+    ctx.beginPath(); ctx.ellipse(baseX,baseY+3,70,11,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.fillStyle='#39433e';
+    ctx.beginPath(); ctx.moveTo(baseX-48,baseY); ctx.lineTo(baseX+48,baseY); ctx.lineTo(baseX+34,baseY-28); ctx.lineTo(baseX-34,baseY-28); ctx.closePath(); ctx.fill();
+    const dim=(this.state.estop||!this.state.enabled);
+    const linkCol=dim?'#b8c0bb':'#cdd5d0';
+    const darkCol=dim?'#7e8884':'#39433e';
+    const link=(p,q,w,c)=>{ ctx.strokeStyle=c; ctx.lineWidth=w; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke(); };
+    link(p0,pSh,30,linkCol); link(pSh,pEl,26,linkCol); link(pEl,pWr,20,linkCol); link(pWr,pTo,13,darkCol);
+    ctx.strokeStyle=darkCol; ctx.lineWidth=4; ctx.lineCap='round';
+    const gx=Math.cos(t5+Math.PI/2)*9, gy=Math.sin(t5+Math.PI/2)*9;
+    const ex=Math.cos(t5)*13, ey=Math.sin(t5)*13;
+    ctx.beginPath();
+    ctx.moveTo(pTo.x+gx,pTo.y+gy); ctx.lineTo(pTo.x+gx+ex,pTo.y+gy+ey);
+    ctx.moveTo(pTo.x-gx,pTo.y-gy); ctx.lineTo(pTo.x-gx+ex,pTo.y-gy+ey); ctx.stroke();
+    const jcol=this.state.estop?'#be123c':acc;
+    const joint=(p,r)=>{ ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=jcol; ctx.stroke(); };
+    joint(pSh,9); joint(pEl,8); joint(pWr,7);
+    ctx.beginPath(); ctx.arc(pTo.x,pTo.y,5,0,Math.PI*2); ctx.fillStyle=jcol; ctx.fill();
+    // J1 compass
+    ctx.save();
+    const cx=W-64, cy=H-50, rr=24;
+    ctx.strokeStyle='#e2e6e4'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,rr,0,Math.PI*2); ctx.stroke();
+    const ya=d(ang[0])-Math.PI/2;
+    ctx.strokeStyle=acc; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+rr*0.8*Math.cos(ya),cy+rr*0.8*Math.sin(ya)); ctx.stroke();
+    ctx.fillStyle='#7a7a7a'; ctx.font='500 10px Inter,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('J1 '+ang[0].toFixed(0)+'°',cx,cy+rr+13);
+    ctx.restore();
+  }
+  // ---------- interactions ----------
+  setMode(m,label){
+    if(this.state.mode===m) return;
+    if(this.state.estop) return;
+    if(m==='jog') this.jog=this.ang.slice();
+    this.setState({mode:m});
+    this.cmd({type:'set_mode',mode:m});
+    this.addLog('Chế độ: '+label,'#5a6661');
+  }
+  toggleEnable(){
+    if(this.state.estop) return;
+    const en=!this.state.enabled;
+    this.setState({enabled:en});
+    this.cmd({type:'enable',value:en});
+    this.addLog(en?'Servo ON · 6/6 trục':'Servo OFF · giữ phanh', en?'#1f9559':'#7a7a7a');
+  }
+  goHome(){
+    if(this.state.estop||!this.state.enabled) return;
+    this.jog=this.home.slice();
+    this.setState({mode:'jog',trajPlaying:false});
+    this.cmd({type:'home'});
+    this.addLog('Về vị trí Home','#5a6661');
+  }
+  toggleEstop(){
+    const es=!this.state.estop;
+    this.setState({estop:es, trajPlaying:false});
+    this.cmd({type:'estop',value:es});
+    if(es) this.addLog('⏻ DỪNG KHẨN CẤP kích hoạt','#be123c');
+    else { this.jog=this.ang.slice(); this.addLog('Reset E-Stop · sẵn sàng','#1f9559'); }
+  }
+  setStep(s){ this.setState({step:s}); }
+  trajPlay(){
+    if(this.state.estop||!this.state.enabled) return;
+    const p=!this.state.trajPlaying;
+    this.setState({mode:'traj',trajPlaying:p});
+    this.cmd({type:'traj',action:p?'play':'pause'});
+    this.addLog(p?'Phát quỹ đạo pick_place_01':'Tạm dừng quỹ đạo','#5a6661');
+  }
+  trajReset(){
+    this.state.trajT=0;
+    this.setState({trajT:0,trajPlaying:false,mode:'traj'});
+    this.cmd({type:'traj',action:'reset'});
+    this.addLog('Đưa quỹ đạo về điểm đầu','#5a6661');
+  }
+  dragTrack(e, set){
+    const track=e.currentTarget;
+    const move=(ev)=>{ const r=track.getBoundingClientRect(); let f=(ev.clientX-r.left)/r.width; f=this.clamp(f,0,1); set(f); };
+    move(e);
+    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); };
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+  }
+  beginJoint(i,e){
+    if(this.state.estop||!this.state.enabled) return;
+    if(this.state.mode!=='jog'){ this.jog=this.ang.slice(); this.setState({mode:'jog'}); this.addLog('Chế độ: Jog thủ công','#5a6661'); }
+    const m=this.meta[i];
+    this.dragTrack(e,(f)=>{ this.jog[i]=m.min+f*(m.max-m.min); this.cmd({type:'jog',joint:i,angle:Math.round(this.jog[i]*100)/100}); this.setState({sel:i}); });
+  }
+  nudge(i,dir){
+    if(this.state.estop||!this.state.enabled) return;
+    const m=this.meta[i];
+    if(this.state.mode!=='jog'){ this.jog=this.ang.slice(); }
+    this.jog[i]=this.clamp(this.jog[i]+dir*this.state.step,m.min,m.max);
+    this.cmd({type:'jog',joint:i,angle:Math.round(this.jog[i]*100)/100});
+    this.setState({mode:'jog',sel:i});
+  }
+  trajScrub(e){
+    if(this.state.estop) return;
+    this.setState({mode:'traj',trajPlaying:false});
+    this.dragTrack(e,(f)=>{ this.state.trajT=f; this.cmd({type:'traj',action:'seek',value:Math.round(f*1000)/1000}); this.setState({trajT:f}); });
+  }
+  speedDrag(e){ this.dragTrack(e,(f)=>{ const v=Math.round(f*100); this.cmd({type:'speed',value:v}); this.setState({speed:v}); }); }
+  toggleGrid(){ this.setState({grid:!this.state.grid}); }
+  // ---------- liên kết controller (WebSocket) ----------
+  cmd(obj){ if(this.ws && this.ws.readyState===1){ try{ this.ws.send(JSON.stringify(obj)); }catch(e){} } }
+  initLink(){
+    let url=window.__VD_WS__;
+    if(!url && (location.protocol==='http:'||location.protocol==='https:')){
+      url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws';
+    }
+    if(!url) return;            // mở bằng file:// → giữ chế độ demo
+    this._wsUrl=url; this.connect();
+  }
+  connect(){
+    try{
+      const ws=new WebSocket(this._wsUrl); this.ws=ws;
+      ws.onopen=()=>{ this.live=true; this.setState({link:true}); this.addLog('Kết nối máy chủ điều khiển (backend)','#1f9559'); this.cmd({type:'list_ports'}); };
+      ws.onmessage=(e)=>{ try{ this.applyLive(JSON.parse(e.data)); }catch(err){} };
+      ws.onerror=()=>{ try{ ws.close(); }catch(e){} };
+      ws.onclose=()=>{ if(this.live) this.addLog('Mất kết nối backend — chế độ demo','#be123c'); this.live=false; this.ws=null; this.setState({link:false,connState:'disconnected',connStatusMsg:'Mất kết nối backend',connStatusColor:'#be123c'}); if(this._m) setTimeout(()=>this.connect(),2500); };
+    }catch(e){}
+  }
+  applyLive(s){
+    if(s.type==='ports'){ this.setState({ports:Array.isArray(s.ports)?s.ports:[]}); return; }
+    if(s.type==='conn_status'){
+      const on=(s.state==='connected');
+      this.setState({
+        connState:s.state||'disconnected',
+        transport:s.transport||this.state.transport,
+        connStatusMsg:s.message||(on?'Đã kết nối':'Chưa kết nối'),
+        connStatusColor:on?'#1f9559':(s.state==='error'?'#be123c':(s.state==='connecting'?'#5a6661':'#7a7a7a'))
+      });
+      this.addLog('Kết nối '+(s.transport||'').toUpperCase()+': '+(s.message||s.state),on?'#1f9559':'#be123c');
+      return;
+    }
+    if(s.type && s.type!=='state') return;
+    if(Array.isArray(s.angles)) this.ang=s.angles.slice();
+    if(Array.isArray(s.torques)) this.tq=s.torques.slice();
+    this._gotLive=true;
+    const upd={ angT:this.ang.slice(), tq:this.tq.slice(), clock:this.fmtClock() };
+    if(s.tcp) upd.tcp=s.tcp;
+    if(s.traj){ if(typeof s.traj.progress==='number'){ this.state.trajT=s.traj.progress; upd.trajT=s.traj.progress; } if(typeof s.traj.playing==='boolean') upd.trajPlaying=s.traj.playing; }
+    if(s.servo){ upd.estop=(s.servo==='fault'); upd.enabled=(s.servo!=='off'); }
+    this.setState(upd);
+  }
+  // ---------- kết nối UART / TCP ----------
+  refreshPorts(){ if(this.live) this.cmd({type:'list_ports'}); else this.setState({connStatusMsg:'Cần backend đang chạy để quét cổng COM',connStatusColor:'#b8860b'}); }
+  selTransport(tp){ if(this.state.connState==='connected') return; this.setState({transport:tp}); }
+  pickBaud(b){ if(this._baudInput) this._baudInput.value=b; this.setState({baud:b}); }
+  doConnect(){
+    if(!this.live){ this.setState({connStatusMsg:'Không có backend — mở app qua server.py để kết nối phần cứng',connStatusColor:'#be123c'}); return; }
+    const tp=this.state.transport;
+    let msg={type:'connect',transport:tp};
+    if(tp==='uart'){
+      const port=this._portSel?this._portSel.value:this.state.uartPort;
+      const baud=this._baudInput?parseInt(this._baudInput.value,10):this.state.baud;
+      if(!port){ this.setState({connStatusMsg:'Chưa chọn cổng COM',connStatusColor:'#be123c'}); return; }
+      msg.port=port; msg.baud=baud||115200;
+      this.setState({uartPort:port,baud:msg.baud});
+    } else {
+      const ip=this._ipInput?this._ipInput.value.trim():this.state.tcpIp;
+      const tport=this._tcpPortInput?parseInt(this._tcpPortInput.value,10):this.state.tcpPort;
+      if(!ip){ this.setState({connStatusMsg:'Chưa nhập địa chỉ IP',connStatusColor:'#be123c'}); return; }
+      msg.ip=ip; msg.port=tport||5000;
+      this.setState({tcpIp:ip,tcpPort:msg.port});
+    }
+    this.setState({connState:'connecting',connStatusMsg:'Đang kết nối…',connStatusColor:'#5a6661'});
+    this.cmd(msg);
+  }
+  doDisconnect(){ this.cmd({type:'disconnect'}); this.setState({connState:'disconnected',connStatusMsg:'Đã yêu cầu ngắt kết nối',connStatusColor:'#7a7a7a'}); }
+  // ---------- render ----------
+  renderVals(){
+    const st=this.state, clamp=this.clamp.bind(this);
+    const acc=this.props.accent||'#28ab67';
+    const connected=(st.connState==='connected');
+    const uartOn=(st.transport==='uart'), tcpOn=(st.transport==='tcp');
+    const portOptions=(st.ports&&st.ports.length)
+      ? st.ports.map(p=>({value:(p.device||p),label:(p.device||p)+(p.description?(' · '+p.description):'')}))
+      : [{value:'',label:'— không thấy cổng (bấm quét lại) —'}];
+    const baudChips=this.BAUDS.map(b=>({ label:(b>=1000000?(b/1000000+'M'):b), onPick:()=>this.pickBaud(b) }));
+    const tabBg=(on)=> on?acc:'transparent';
+    const tabFg=(on)=> on?'#fff':'#7a7a7a';
+    const stepBg=(s)=> st.step===s?acc:'transparent';
+    const stepFg=(s)=> st.step===s?'#fff':'#7a7a7a';
+    const jointRows=this.meta.map((m,i)=>{
+      const a=st.angT[i], tq=st.tq[i];
+      const posPct=clamp(((a-m.min)/(m.max-m.min))*100,0,100);
+      const hot=Math.abs(tq)>m.maxTq*0.82;
+      return {
+        name:m.name, ang:a.toFixed(1),
+        posPct:posPct.toFixed(2)+'%',
+        tq:Math.round(Math.abs(tq))+'', cur:Math.abs(tq*0.55).toFixed(1),
+        range:m.min+'…'+m.max+(m.prism?' mm':'°'),
+        barColor:hot?'#be123c':acc,
+        tqColor:hot?'#be123c':'#7a7a7a',
+        rowBg: st.sel===i?'rgba(40,171,103,0.07)':'transparent',
+        onDown:(e)=>this.beginJoint(i,e),
+        onMinus:()=>this.nudge(i,-1),
+        onPlus:()=>this.nudge(i,1)
+      };
+    });
+    const f=v=>(v>=0?'+':'')+v.toFixed(1);
+    const T=st.tcp;
+    const tcp={ x:f(T.x), y:f(T.y), z:f(T.z), rx:f(T.rx), ry:f(T.ry), rz:f(T.rz) };
+    // alarms
+    const alarms=[];
+    if(st.estop){ alarms.push({color:'#be123c',title:'Dừng khẩn cấp',sub:'Mạch an toàn đã ngắt — nhấn Reset để tiếp tục',time:st.clock}); }
+    else if(!st.enabled){ alarms.push({color:'#7a7a7a',title:'Servo OFF',sub:'Truyền động đang giữ phanh',time:st.clock}); }
+    else { alarms.push({color:acc,title:'Hệ thống servo',sub:'Tất cả 6 trục hoạt động bình thường',time:st.clock}); }
+    let red=st.estop?1:0;
+    this.meta.forEach((m,i)=>{ if(Math.abs(st.tq[i])>m.maxTq*0.82 && !st.estop && st.enabled){ red++; alarms.push({color:'#be123c',title:'Mô‑men '+m.name+' cao',sub:Math.round(Math.abs(st.tq[i]))+' Nm · gần ngưỡng '+m.maxTq+' Nm',time:st.clock}); } });
+    alarms.push({color:acc,title:'Giới hạn mềm',sub:'Không trục nào vượt giới hạn',time:st.clock});
+    alarms.push({color:'#7a7a7a',title:'Hiệu chuẩn',sub:'Lần cuối 22/06/2026 · hợp lệ',time:'09:02:10'});
+    const waypoints=this.wpNames.map((n,i)=>({ name:n, pos:(this.wpPos[i]*100)+'%', fill: st.trajT>=this.wpPos[i]?acc:'#fff' }));
+    const modeLabel = st.estop?'DỪNG KHẨN':(st.mode==='monitor'?'TRỰC TIẾP':(st.mode==='jog'?'JOG THỦ CÔNG':'QUỸ ĐẠO'));
+    const trajState = st.estop?'đã khoá':(st.trajPlaying?'đang chạy':'tạm dừng');
+    // ----- model + project modal -----
+    const typeVi=(tp)=> tp==='prismatic'?'tịnh tiến':(tp==='continuous'?'xoay ∞':(tp==='revolute'?'xoay':(tp||'—')));
+    const modelJoints=this.meta.map(m=>({ name:m.name, type:typeVi(m.type), axis:m.axisL||'—', range:m.min+'…'+m.max+(m.prism?' mm':'°') }));
+    const fmtAgo=(ts)=>{ const s=Math.floor((Date.now()-ts)/1000); if(s<60)return 'vừa xong'; const mi=Math.floor(s/60); if(mi<60)return mi+' phút trước'; const h=Math.floor(mi/60); if(h<24)return h+' giờ trước'; const d=new Date(ts); const p=n=>(n<10?'0':'')+n; return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear(); };
+    const recents=(st.recents||[]).map(r=>({ id:r.id, name:r.name, time:fmtAgo(r.ts), onOpen:()=>this.openRecent(r), onRemove:()=>this.removeRecent(r) }));
+    return {
+      accent:acc,
+      setStage:this.setStage, setCanvas:this.setCanvas, setFileInput:this.setFileInput,
+      setPortSel:this.setPortSel, setBaudInput:this.setBaudInput, setIpInput:this.setIpInput, setTcpPortInput:this.setTcpPortInput,
+      // connection modal
+      connDisplay: st.connOpen?'flex':'none',
+      onOpenConn:()=>this.setState({connOpen:true}),
+      onCloseConn:()=>this.setState({connOpen:false}),
+      onSelUart:()=>this.selTransport('uart'),
+      onSelTcp:()=>this.selTransport('tcp'),
+      onRefreshPorts:()=>this.refreshPorts(),
+      onConnect:()=>this.doConnect(),
+      onDisconnect:()=>this.doDisconnect(),
+      uartFieldsDisp: uartOn?'flex':'none',
+      tcpFieldsDisp: tcpOn?'flex':'none',
+      uartBorder: uartOn?acc:'#e2e6e4', tcpBorder: tcpOn?acc:'#e2e6e4',
+      uartCardBg: uartOn?'#edf9f3':'#fff', tcpCardBg: tcpOn?'#edf9f3':'#fff',
+      uartRing: uartOn?acc:'#c8cecb', tcpRing: tcpOn?acc:'#c8cecb',
+      uartDot: uartOn?acc:'transparent', tcpDot: tcpOn?acc:'transparent',
+      portOptions, baudChips, baudDefault:st.baud,
+      ipDefault:st.tcpIp, tcpPortDefault:st.tcpPort,
+      connStatusMsg:st.connStatusMsg, connStatusColor:st.connStatusColor,
+      connectBtnLabel: connected?'Đang kết nối ✓':(st.connState==='connecting'?'Đang kết nối…':'Kết nối'),
+      connectBtnBg: connected?'#1f9559':acc,
+      disconnectFg: connected?'#be123c':'#a6a6a6',
+      // project modal
+      projDisplay: st.projOpen?'flex':'none',
+      onOpenProj:()=>this.setState({projOpen:true}),
+      onCloseProj:()=>this.setState({projOpen:false}),
+      onPickFolder:()=>this.openProject(),
+      onFolderInput:(e)=>this.onFolderPicked(e),
+      onSample:()=>this.loadSample(),
+      loadMsg:st.loadMsg, loadColor:st.loadColor,
+      recents, hasRecents:recents.length>0, noRecents:recents.length===0,
+      modelName:this.modelName, modelDof:this.N,
+      modelJoints,
+      jointRows, tcp, waypoints, alarms,
+      logs:st.logs, clock:st.clock,
+      speedPct:st.speed+'%',
+      progPct:(st.trajT*100).toFixed(1)+'%', progLabel:Math.round(st.trajT*100)+'%',
+      trajState,
+      // handlers
+      onMonitor:()=>this.setMode('monitor','Giám sát'),
+      onJog:()=>this.setMode('jog','Jog thủ công'),
+      onTrajTab:()=>this.setMode('traj','Quỹ đạo'),
+      onEnable:()=>this.toggleEnable(),
+      onHome:()=>this.goHome(),
+      onEstop:()=>this.toggleEstop(),
+      onStep1:()=>this.setStep(1), onStep5:()=>this.setStep(5), onStep15:()=>this.setStep(15),
+      onSpeed:(e)=>this.speedDrag(e),
+      onTrajPlay:()=>this.trajPlay(), onTrajReset:()=>this.trajReset(), onTrajScrub:(e)=>this.trajScrub(e),
+      onToggleGrid:()=>this.toggleGrid(),
+      onResetView:()=>this.resetCam(),
+      // tab styles
+      tabMonBg:tabBg(st.mode==='monitor'), tabMonFg:tabFg(st.mode==='monitor'),
+      tabJogBg:tabBg(st.mode==='jog'), tabJogFg:tabFg(st.mode==='jog'),
+      tabTrajBg:tabBg(st.mode==='traj'), tabTrajFg:tabFg(st.mode==='traj'),
+      step1Bg:stepBg(1), step1Fg:stepFg(1), step5Bg:stepBg(5), step5Fg:stepFg(5), step15Bg:stepBg(15), step15Fg:stepFg(15),
+      // connection chip
+      connText: connected?('Live · '+(st.transport==='uart'?'UART':'TCP')):(st.connState==='connecting'?'Đang kết nối…':(st.link?'Backend · demo':'Ngoại tuyến · demo')),
+      connDetail: connected?(st.transport==='uart'?(st.uartPort+' @ '+st.baud):(st.tcpIp+':'+st.tcpPort)):'Bấm để cấu hình',
+      connBg: st.estop?'#fdeaef':(connected?'#edf9f3':'#eff2f0'),
+      connFg: st.estop?'#be123c':(connected?'#183621':'#7a7a7a'),
+      connDot: st.estop?'#be123c':(connected?acc:(st.connState==='connecting'?'#b8860b':'#a6a6a6')),
+      connHalo: st.estop?'rgba(190,18,60,0.18)':(connected?'rgba(40,171,103,0.18)':'rgba(166,166,166,0.18)'),
+      // enable btn
+      enableLabel: st.enabled?'Đang bật':'Bật servo',
+      enableBg: st.enabled?acc:'#fff',
+      enableFg: st.enabled?'#fff':'#272727',
+      enableBorder: st.enabled?acc:'#e2e6e4',
+      enableDot: st.enabled?'#fff':'#a6a6a6',
+      homeOpacity: (st.estop||!st.enabled)?'0.45':'1',
+      estopLabel: st.estop?'Reset E‑Stop':'E‑STOP',
+      estopBg: st.estop?'#272727':'#be123c',
+      estopHalo: st.estop?'rgba(39,39,39,0.14)':'rgba(190,18,60,0.14)',
+      // viewport
+      liveLabel:modeLabel,
+      liveDot: st.estop?'#be123c':(st.mode==='monitor'?'#be123c':acc),
+      liveAnim: st.estop?'vdpulse 0.8s infinite':'none',
+      estopAnim: st.estop?'vdring 1.1s infinite':'none',
+      gridBtnBg: st.grid?acc:'rgba(255,255,255,0.85)',
+      gridBtnFg: st.grid?'#fff':'#272727',
+      // trajectory play icons
+      playDisp: st.trajPlaying?'none':'block',
+      pauseDisp: st.trajPlaying?'block':'none',
+      // servo line
+      servoText: st.estop?'Lỗi · đã ngắt':(st.enabled?'ON · 6/6 trục':'OFF · giữ phanh'),
+      servoFg: st.estop?'#be123c':(st.enabled?'#183621':'#7a7a7a'),
+      servoDot: st.estop?'#be123c':(st.enabled?acc:'#a6a6a6'),
+      // alarm badge
+      alarmBadge: red>0?(red+' cảnh báo'):'Bình thường',
+      alarmBadgeBg: red>0?'#be123c':acc
+    };
+  }
+}
+</script>
+</body>
+</html>
